@@ -542,6 +542,103 @@
             text-transform: uppercase;
         }
 
+    
+
+/* --- PORTRAIT FIT FIX (v1.1) --- */
+:root { --vh: 1vh; } /* JS can override if needed */
+html, body { height: 100%; }
+
+/* Prefer dynamic viewport units on mobile to avoid "zoomed corner" + 100vh bugs */
+body { min-height: 100dvh; }
+
+#intro-container {
+    width: 100vw;
+    height: 100dvh;
+}
+
+/* Ensure the Three.js canvas truly fills the intro container */
+#intro-container canvas {
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
+@media (max-width: 520px) {
+    body { align-items: stretch; }
+    .game-wrapper { width: 100vw; min-height: 100dvh; padding: 12px; }
+    .game-container { width: 100%; margin: 0 auto; }
+}
+
+        /* --- PHONE PORTRAIT RESPONSIVE PATCH (v1.0) --- */
+body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+}
+
+/* Make touch dragging feel correct */
+#document-area { touch-action: none; }
+
+@media (max-width: 520px) {
+    .game-wrapper { padding: 12px; }
+    .game-container { max-width: 520px; gap: 12px; }
+
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .level-badge { font-size: 1.05rem; }
+
+    .mission-brief {
+        transform: none;
+        padding: 12px;
+    }
+
+    .document-wrapper {
+        padding: 18px;
+        font-size: 1.0rem;
+        line-height: 1.9;
+        min-height: 240px;
+    }
+
+    .document-wrapper.personal {
+        font-size: 1.2rem;
+    }
+    .document-wrapper.personal .word {
+        font-size: 1.25rem;
+    }
+
+    .word { padding: 6px 2px; margin: 0 1px; }
+
+    .controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    .action-buttons { width: 100%; gap: 10px; }
+    button { width: 100%; padding: 12px 14px; font-size: 0.95rem; }
+
+    .sticky-note {
+        width: min(240px, 78vw);
+        left: 10px;
+        top: -8px;
+    }
+
+    .feedback-card { width: min(520px, 90vw); padding: 20px; }
+
+    .intro-title { font-size: 2.0rem; letter-spacing: 3px; }
+    .intro-subtitle { font-size: 1.0rem; margin-bottom: 28px; }
+    #start-btn { font-size: 1.15rem; padding: 12px 26px; }
+
+    .vignette { box-shadow: inset 0 0 120px rgba(0,0,0,0.9); }
+}
+
     </style>
 </head>
 <body class="phase-morning">
@@ -792,6 +889,16 @@
         let isTransitioning = false;
         let animationId;
 
+        
+function setVhUnit() {
+    // Helps iOS Safari address bar resizing issues
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+window.addEventListener('resize', setVhUnit, { passive: true });
+window.addEventListener('orientationchange', setVhUnit, { passive: true });
+setVhUnit();
+
         function initThreeJS() {
             scene = new THREE.Scene();
             scene.fog = new THREE.FogExp2(0x111111, 0.035);
@@ -801,8 +908,14 @@
             camera.position.set(0, 1.6, 15); 
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setSize(introContainer.clientWidth, introContainer.clientHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.domElement.style.position = 'absolute';
+            renderer.domElement.style.top = '0';
+            renderer.domElement.style.left = '0';
+            renderer.domElement.style.width = '100%';
+            renderer.domElement.style.height = '100%';
+            renderer.domElement.style.display = 'block';
             introContainer.appendChild(renderer.domElement);
 
             const ambientLight = new THREE.AmbientLight(0x404040, 0.5); 
@@ -887,11 +1000,15 @@
             renderer.render(scene, camera);
         }
 
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
+        
+function onWindowResize() {
+    if (!camera || !renderer) return;
+    const w = introContainer ? introContainer.clientWidth : window.innerWidth;
+    const h = introContainer ? introContainer.clientHeight : window.innerHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+}
 
         function startGame() {
             AudioSys.init(); // Initialize audio context on user gesture
@@ -1046,11 +1163,36 @@
         const progressFill = document.getElementById('progress-fill');
         const classificationText = document.getElementById('classification-text');
 
-        document.addEventListener('mousedown', () => isDragging = true);
-        document.addEventListener('mouseup', () => {
-            isDragging = false;
-            dragAction = null;
-        });
+        
+// --- INPUT: Pointer Events (mouse + touch) ---
+let isPointerDown = false;
+let activePointerId = null;
+
+function endDrag() {
+    isDragging = false;
+    isPointerDown = false;
+    activePointerId = null;
+    dragAction = null;
+}
+
+// Track pointer up/cancel anywhere on the page
+document.addEventListener('pointerup', (e) => {
+    if (activePointerId === null || e.pointerId === activePointerId) endDrag();
+}, { passive: true });
+
+document.addEventListener('pointercancel', (e) => {
+    if (activePointerId === null || e.pointerId === activePointerId) endDrag();
+}, { passive: true });
+
+// Drag across words on touch: detect element under finger
+documentArea.addEventListener('pointermove', (e) => {
+    if (!isPointerDown || !isDragging || (activePointerId !== null && e.pointerId !== activePointerId)) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (!el) return;
+    const wordEl = el.classList && el.classList.contains('word') ? el : (el.closest ? el.closest('.word') : null);
+    if (wordEl && dragAction) applyRedaction(wordEl, dragAction);
+    e.preventDefault();
+}, { passive: false });
 
         function parseLevel(rawLevelObj) {
             const tokens = rawLevelObj.rawText.split(' ');
@@ -1147,17 +1289,27 @@
                 const randomRot = (Math.random() * 4 - 2).toFixed(1) + 'deg';
                 span.style.setProperty('--rot', randomRot);
 
-                span.addEventListener('mousedown', (e) => {
-                    const isRedacted = span.classList.contains('redacted');
-                    dragAction = isRedacted ? 'remove' : 'add';
-                    applyRedaction(span, dragAction);
-                });
+                
+span.addEventListener('pointerdown', (e) => {
+    // Lock to one pointer (finger) at a time
+    activePointerId = e.pointerId;
+    isPointerDown = true;
+    isDragging = true;
 
-                span.addEventListener('mouseenter', (e) => {
-                    if (isDragging && dragAction) {
-                        applyRedaction(span, dragAction);
-                    }
-                });
+    const isRedacted = span.classList.contains('redacted');
+    dragAction = isRedacted ? 'remove' : 'add';
+    applyRedaction(span, dragAction);
+
+    // Prevent page scroll while dragging on mobile
+    e.preventDefault();
+}, { passive: false });
+
+// Desktop hover drag support
+span.addEventListener('pointerenter', (e) => {
+    if (e.pointerType === 'mouse' && isDragging && dragAction) {
+        applyRedaction(span, dragAction);
+    }
+});
 
                 textContainer.appendChild(span);
             });
