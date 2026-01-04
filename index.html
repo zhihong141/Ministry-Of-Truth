@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Ministry of Truth</title>
+    <!-- Three.js for the 3D Intro -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        /* Updated Import: Swapped 'Homemade Apple' for 'Caveat' */
+        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Special+Elite&family=Caveat:wght@500;700&display=swap');
+
+        :root {
+            --bg-color: #2c2c2c;
+            --desk-color: #3e3a36;
+            --paper-color: #f4f1ea;
+            --personal-paper-color: #dbe9f4; /* Blueish tint for personal letters */
+            --ink-color: #1a1a1a;
+            --redact-color: #000;
+            --highlight-color: #ffe66d;
+            --accent-red: #c0392b;
+            --accent-green: #27ae60;
+            --accent-yellow: #f1c40f;
+            --monitor-glow: rgba(0, 0, 0, 0);
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--paper-color);
+            font-family: 'Courier Prime', monospace;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            transition: background-color 2s ease, filter 2s ease;
+        }
+
+        /* --- VISUAL PROGRESSION PHASES --- */
+        
+        /* Morning (Default) */
+        body.phase-morning {
+            --bg-color: #2c2c2c;
+        }
+
+        /* Evening (Dimmed) */
+        body.phase-evening {
+            --bg-color: #1a1a1a;
+        }
+        body.phase-evening .game-container {
+            filter: contrast(1.2) brightness(0.9) sepia(0.2);
+        }
+        body.phase-evening .vignette {
+            box-shadow: inset 0 0 200px rgba(0,0,0,0.95);
+        }
+
+        /* Midnight (Dark / High Stress) */
+        body.phase-midnight {
+            --bg-color: #050505;
+        }
+        body.phase-midnight .game-container {
+            filter: contrast(1.4) brightness(0.7) sepia(0.4);
+        }
+        body.phase-midnight .vignette {
+            box-shadow: inset 0 0 300px rgba(0,0,0,1);
+        }
+        body.phase-midnight .flicker {
+            animation: flicker-anim 0.05s infinite; /* Faster, more intense flicker */
+            opacity: 0.15;
+        }
+
+
+        /* --- 3D Intro Styles --- */
+        #intro-container {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 2000;
+            background: #000;
+            transition: opacity 1s ease-out;
+        }
+
+        #intro-ui {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #fff;
+            z-index: 2001;
+            font-family: 'Special Elite', cursive;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            pointer-events: none;
+        }
+
+        .intro-title {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+        }
+
+        .intro-subtitle {
+            font-size: 1.2rem;
+            color: #aaa;
+            margin-bottom: 40px;
+            font-family: 'Courier Prime', monospace;
+        }
+
+        #start-btn {
+            pointer-events: auto;
+            background: transparent;
+            color: var(--accent-red);
+            border: 2px solid var(--accent-red);
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            font-family: 'Special Elite', cursive;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 0 10px var(--accent-red);
+        }
+
+        #start-btn:hover {
+            background: var(--accent-red);
+            color: #000;
+            box-shadow: 0 0 30px var(--accent-red);
+        }
+
+        /* --- Retro Atmosphere Overlay Container --- */
+        .crt-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        /* Layer 1: The Scanlines */
+        .scanlines {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0,0,0,0.2) 50%,
+                rgba(0,0,0,0.2)
+            );
+            background-size: 100% 4px;
+            opacity: 0.7;
+        }
+
+        /* Layer 2: The Gloomy Vignette & Bezel Shadow */
+        .vignette {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(
+                circle at center,
+                rgba(0,0,0,0) 50%,
+                rgba(0,0,0,0.4) 90%,
+                rgba(0,0,0,0.85) 100%
+            );
+            box-shadow: inset 0 0 150px rgba(0,0,0,0.9); 
+            transition: box-shadow 2s ease;
+        }
+
+        /* Layer 3: Unstable Power Flicker */
+        .flicker {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.1);
+            opacity: 0;
+            animation: flicker-anim 0.1s infinite;
+        }
+
+        @keyframes flicker-anim {
+            0% { opacity: 0.05; }
+            5% { opacity: 0.02; }
+            10% { opacity: 0.05; }
+            15% { opacity: 0.1; }
+            20% { opacity: 0.05; }
+            50% { opacity: 0.02; }
+            80% { opacity: 0.05; }
+            100% { opacity: 0.02; }
+        }
+
+        /* --- UI Elements (Game) --- */
+        .game-wrapper {
+            opacity: 0; 
+            transition: opacity 1.5s ease-in;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .game-wrapper.visible {
+            opacity: 1;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative;
+            z-index: 1;
+            filter: contrast(1.1) sepia(0.1); 
+            transition: filter 2s ease;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #1a1a1a;
+            padding: 15px;
+            border-bottom: 2px solid #555;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .level-badge {
+            font-family: 'Special Elite', cursive;
+            font-size: 1.2rem;
+            color: #ccc;
+        }
+
+        .status-light {
+            width: 15px;
+            height: 15px;
+            background: #555;
+            border-radius: 50%;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            transition: background 0.3s;
+        }
+        .status-light.active { background: var(--accent-red); box-shadow: 0 0 10px var(--accent-red); }
+
+        /* --- The Folder / Brief --- */
+        .mission-brief {
+            background: #dcd6bc;
+            color: #2c2310;
+            padding: 15px;
+            border-radius: 2px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+            transform: rotate(-1deg);
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .paper-clip {
+            position: absolute;
+            top: -10px;
+            right: 20px;
+            width: 40px;
+            height: 15px;
+            background: #888;
+            border-radius: 10px;
+            box-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .mission-title {
+            font-weight: bold;
+            text-transform: uppercase;
+            border-bottom: 1px solid #888;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+        }
+
+        /* --- The Document --- */
+        .document-wrapper {
+            background-color: var(--paper-color);
+            color: var(--ink-color);
+            padding: 40px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            min-height: 300px;
+            position: relative;
+            font-size: 1.1rem;
+            line-height: 2.2;
+            /* Transition adjusted for document slide effect logic */
+            transition: background-color 0.5s; 
+        }
+
+        /* Paper Shuffle Animation Classes */
+        .document-wrapper.slide-out {
+            transition: transform 0.5s ease-in, opacity 0.5s ease-in;
+            transform: translateX(-120%) rotate(-5deg);
+            opacity: 0;
+        }
+
+        .document-wrapper.slide-in {
+            animation: slideInAnim 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+
+        @keyframes slideInAnim {
+            from { transform: translateX(120%) rotate(5deg); opacity: 0; }
+            to { transform: translateX(0) rotate(0deg); opacity: 1; }
+        }
+
+        /* PERSONAL CORRESPONDENCE STYLE */
+        .document-wrapper.personal {
+            background-color: var(--personal-paper-color);
+            font-family: 'Caveat', cursive; /* Updated Font */
+            font-size: 1.4rem; /* Slightly larger base */
+            font-weight: 500;
+            color: #002b36;
+            line-height: 1.6;
+            transform: rotate(1deg);
+        }
+        .document-wrapper.personal .classification {
+            border-color: #002b36;
+        }
+        .document-wrapper.personal .word {
+            font-family: 'Caveat', cursive; /* Updated Font */
+            font-size: 1.5rem; /* Larger words for readability */
+        }
+
+        /* Screen Shake Animation Class */
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0) rotate(1deg); }
+            20%, 80% { transform: translate3d(2px, 0, 0) rotate(-1deg); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        .document-header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+        }
+
+        .classification {
+            border: 2px solid #000;
+            padding: 5px 10px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+
+        /* --- Redaction Mechanics --- */
+        .word {
+            cursor: crosshair;
+            padding: 2px 0;
+            margin: 0 2px;
+            border-radius: 2px;
+            transition: background-color 0.1s;
+            position: relative;
+            z-index: 10;
+            display: inline-block;
+        }
+
+        .word:hover {
+            background-color: rgba(0,0,0,0.05);
+        }
+
+        .word.redacted {
+            color: transparent;
+            text-shadow: none;
+        }
+        
+        .word.redacted::after {
+            content: '';
+            position: absolute;
+            top: -10%; 
+            left: -5%; 
+            width: 110%; 
+            height: 120%;
+            background: #1a1a1a;
+            transform: rotate(var(--rot, -0.5deg)); 
+            z-index: 11;
+            opacity: 0.95;
+            border-radius: 2px;
+            box-shadow: 0 0 2px rgba(0,0,0,0.4);
+        }
+
+        /* --- Controls --- */
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        button {
+            font-family: 'Special Elite', cursive;
+            font-size: 1.0rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 12px 24px;
+            border: 2px solid #1a1a1a;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.1s ease;
+            outline: none;
+            box-shadow: 4px 4px 0 rgba(0,0,0,0.8); 
+            font-weight: bold;
+        }
+
+        button:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.8);
+        }
+
+        .btn-clear { background: #d4d4d4; color: #1a1a1a; }
+        .btn-clear:hover { background: #e8e8e8; }
+        .btn-hint { background: var(--accent-yellow); color: #1a1a1a; border-color: #5d4d00; }
+        .btn-hint:hover { filter: brightness(1.1); }
+        .btn-submit { background: var(--accent-red); color: var(--paper-color); border-color: #5a1a13; }
+        .btn-submit:hover { filter: brightness(1.1); }
+        
+        /* --- Feedback Stamp --- */
+        .stamp {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(3) rotate(-15deg);
+            font-family: 'Special Elite', cursive;
+            font-size: 4rem;
+            font-weight: bold;
+            border: 5px solid;
+            padding: 10px 30px;
+            text-transform: uppercase;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 100;
+            transition: all 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background: rgba(255, 255, 255, 0.8);
+            mix-blend-mode: multiply;
+        }
+
+        .stamp.approved { color: var(--accent-green); border-color: var(--accent-green); }
+        .stamp.rejected { color: var(--accent-red); border-color: var(--accent-red); }
+        .stamp.visible { opacity: 0.9; transform: translate(-50%, -50%) scale(1) rotate(-15deg); }
+
+        /* --- Sticky Note for Hints --- */
+        .sticky-note {
+            background: #f1c40f;
+            color: #333;
+            width: 200px;
+            padding: 15px;
+            font-family: 'Courier Prime', monospace;
+            font-size: 0.9rem;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+            position: absolute;
+            top: -10px;
+            left: 10px;
+            z-index: 50;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px) rotate(2deg);
+            transition: all 0.3s ease-out;
+        }
+        
+        .sticky-note.show { opacity: 1; visibility: visible; transform: translateY(0) rotate(2deg); }
+
+        /* --- Modal/Overlay for Feedback --- */
+        .feedback-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .feedback-overlay.show { opacity: 1; pointer-events: auto; }
+
+        .feedback-card {
+            background: var(--paper-color);
+            color: #1a1a1a;
+            padding: 30px;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            border: 1px solid #999;
+        }
+
+        .feedback-title { font-size: 1.5rem; font-weight: bold; margin-bottom: 10px; }
+        .feedback-msg { margin-bottom: 20px; font-family: 'Courier Prime', monospace; }
+
+        .progress-container {
+            width: 100%;
+            height: 4px;
+            background: #444;
+            margin-top: 10px;
+            position: relative;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--accent-red);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .footer {
+            text-align: center;
+            font-family: 'Courier Prime', monospace;
+            font-size: 0.8rem;
+            color: #555;
+            margin-top: 30px;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            opacity: 0.6;
+            cursor: default; /* Doesn't look like a button */
+            user-select: none;
+        }
+
+        .intro-footer {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            text-align: center;
+            color: #666;
+            font-family: 'Courier Prime', monospace;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            z-index: 2002;
+            text-transform: uppercase;
+        }
+
+    </style>
+</head>
+<body class="phase-morning">
+    
+    <!-- 3D Intro Overlay -->
+    <div id="intro-container">
+        <div id="intro-ui">
+            <div class="intro-title">Ministry of Truth</div>
+            <div class="intro-subtitle">Department of Records // Sector 7G</div>
+            <button id="start-btn" onclick="startGame()">Begin Shift</button>
+        </div>
+        <div class="intro-footer">SEVEN.FOUR &copy; 2025</div>
+    </div>
+
+    <!-- Enhanced Overlay Structure -->
+    <div class="crt-overlay">
+        <div class="scanlines"></div>
+        <div class="vignette"></div>
+        <div class="flicker"></div>
+    </div>
+
+    <!-- Game Wrapper (Hidden Initially) -->
+    <div class="game-wrapper" id="game-wrapper">
+        <div class="game-container">
+            <!-- Top Bar -->
+            <div class="header">
+                <div>
+                    <div class="level-badge">MINISTRY OF TRUTH // <span id="rank-title">APPRENTICE</span></div>
+                    <div class="progress-container">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                </div>
+                <div class="status-light" id="status-light"></div>
+            </div>
+
+            <!-- Mission Brief -->
+            <div class="mission-brief">
+                <div class="paper-clip"></div>
+                <div class="mission-title">DIRECTIVE #<span id="directive-id">892</span></div>
+                <div id="mission-text">Loading directive...</div>
+            </div>
+
+            <!-- The Document -->
+            <div class="document-wrapper" id="document-area">
+                <div class="sticky-note" id="hint-box">
+                    <strong>INTEL:</strong> <span id="hint-text">...</span>
+                </div>
+                <div class="stamp" id="stamp">APPROVED</div>
+                <div class="document-header">
+                    <div class="classification" id="classification-text">CONFIDENTIAL</div>
+                    <div>DATE: <span id="doc-date">12-OCT-1984</span></div>
+                </div>
+                <div id="text-content">
+                    <!-- Text injected here -->
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <button class="btn-hint" onclick="getHint()">REQUEST INTEL</button>
+                <div class="action-buttons">
+                    <button class="btn-clear" onclick="resetLevel()">RESET INK</button>
+                    <button class="btn-submit" onclick="submitRedaction()">SUBMIT TO CENSOR</button>
+                </div>
+            </div>
+
+            <!-- Footer (Hidden Trigger) -->
+            <div class="footer" onclick="revealSecret()" title="">SEVEN.FOUR &copy; 2025</div>
+        </div>
+    </div>
+
+    <!-- Feedback Modal -->
+    <div class="feedback-overlay" id="feedback-modal">
+        <div class="feedback-card">
+            <div class="feedback-title" id="feedback-title">Review Complete</div>
+            <div class="feedback-msg" id="feedback-message">Processing...</div>
+            <button class="btn-submit" onclick="nextLevel()" id="next-btn">NEXT FILE</button>
+        </div>
+    </div>
+
+    <!-- MAIN GAME SCRIPT -->
+    <script>
+        /* =========================================
+           PROCEDURAL AUDIO SYSTEM (Web Audio API)
+           ========================================= */
+        const AudioSys = {
+            ctx: null,
+            humNode: null,
+            init: function() {
+                // Initialize audio context on user interaction
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContext();
+            },
+            
+            // 1. Office Hum (Brown noise background)
+            startHum: function() {
+                if (!this.ctx) return;
+                const bufferSize = 2 * this.ctx.sampleRate;
+                const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                
+                // Generate brown noise approximation
+                let lastOut = 0;
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+                    output[i] = (lastOut + (0.02 * white)) / 1.02;
+                    lastOut = output[i];
+                    output[i] *= 3.5; // Gain
+                }
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = noiseBuffer;
+                noise.loop = true;
+                
+                // Lowpass filter to make it muffled like AC
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 150;
+
+                const gain = this.ctx.createGain();
+                gain.gain.value = 0.05; // Very subtle
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start(0);
+                this.humNode = noise;
+            },
+
+            // 2. Marker Scratch (Triggered on drag)
+            playScratch: function() {
+                if (!this.ctx) return;
+                const t = this.ctx.currentTime;
+                
+                // Noise burst
+                const bufferSize = this.ctx.sampleRate * 0.1; // 0.1s
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 1000; // Scratchy frequency
+                
+                const gain = this.ctx.createGain();
+                // Random volume variation for realism
+                gain.gain.setValueAtTime(0.05 + Math.random() * 0.05, t); 
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start();
+            },
+
+            // 3. Stamp Thud (Oscillator + Noise)
+            playStamp: function(isSuccess) {
+                if (!this.ctx) return;
+                const t = this.ctx.currentTime;
+
+                // Thud (Low frequency impact)
+                const osc = this.ctx.createOscillator();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(100, t);
+                osc.frequency.exponentialRampToValueAtTime(10, t + 0.1);
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.3, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(t + 0.2);
+
+                // High pitch ping if approved (optional positive feedback)
+                if (isSuccess) {
+                    const osc2 = this.ctx.createOscillator();
+                    osc2.type = 'sine';
+                    osc2.frequency.setValueAtTime(800, t);
+                    osc2.frequency.exponentialRampToValueAtTime(400, t + 0.1);
+                    const gain2 = this.ctx.createGain();
+                    gain2.gain.setValueAtTime(0.05, t);
+                    gain2.gain.linearRampToValueAtTime(0, t + 0.1);
+                    osc2.connect(gain2);
+                    gain2.connect(this.ctx.destination);
+                    osc2.start();
+                    osc2.stop(t + 0.1);
+                }
+            },
+
+            // 4. Paper Slide/Rustle
+            playPaper: function() {
+                if (!this.ctx) return;
+                const t = this.ctx.currentTime;
+                
+                // Pinkish noise for paper
+                const bufferSize = this.ctx.sampleRate * 0.3; 
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                let b0, b1, b2, b3, b4, b5, b6;
+                b0 = b1 = b2 = b3 = b4 = b5 = b6 = 0.0;
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+                    b0 = 0.99886 * b0 + white * 0.0555179;
+                    b1 = 0.99332 * b1 + white * 0.0750759;
+                    b2 = 0.96900 * b2 + white * 0.1538520;
+                    b3 = 0.86650 * b3 + white * 0.3104856;
+                    b4 = 0.55000 * b4 + white * 0.5329522;
+                    b5 = -0.7616 * b5 - white * 0.0168980;
+                    data[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+                    data[i] *= 0.11; // (roughly) pink noise
+                    b6 = white * 0.115926;
+                }
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 1200;
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.01, t);
+                gain.gain.linearRampToValueAtTime(0.15, t + 0.1);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start();
+            }
+        };
+
+
+        /* =========================================
+           THREE.JS INTRO SEQUENCE
+           ========================================= */
+        const introContainer = document.getElementById('intro-container');
+        let camera, scene, renderer;
+        let desks = [];
+        let moveSpeed = 0.05;
+        let isTransitioning = false;
+        let animationId;
+
+        function initThreeJS() {
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x111111, 0.035);
+            scene.background = new THREE.Color(0x111111);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 1.6, 15); 
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            introContainer.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.5); 
+            scene.add(ambientLight);
+
+            createOfficeEnvironment();
+            animateIntro();
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        function createOfficeEnvironment() {
+            const deskMat = new THREE.MeshLambertMaterial({ color: 0x3e3a36 });
+            const paperMat = new THREE.MeshBasicMaterial({ color: 0xdddddd });
+            const monitorBodyMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+            const monitorScreenMat = new THREE.MeshBasicMaterial({ color: 0x27ae60 });
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
+            const lightMat = new THREE.MeshBasicMaterial({ color: 0xffffee });
+
+            const floorGeo = new THREE.PlaneGeometry(100, 200);
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.z = -50;
+            scene.add(floor);
+
+            for (let z = 0; z > -80; z -= 3) {
+                createDesk(-3, z, deskMat, paperMat, monitorBodyMat, monitorScreenMat);
+                createDesk(3, z, deskMat, paperMat, monitorBodyMat, monitorScreenMat);
+                if (z % 6 === 0) {
+                    const lightGeo = new THREE.BoxGeometry(8, 0.1, 0.5);
+                    const lightMesh = new THREE.Mesh(lightGeo, lightMat);
+                    lightMesh.position.set(0, 4, z);
+                    scene.add(lightMesh);
+                    const pointLight = new THREE.PointLight(0xffffee, 0.5, 10);
+                    pointLight.position.set(0, 3.5, z);
+                    scene.add(pointLight);
+                }
+            }
+        }
+
+        function createDesk(x, z, deskMat, paperMat, monBody, monScreen) {
+            const deskGroup = new THREE.Group();
+            const topGeo = new THREE.BoxGeometry(2.5, 0.1, 1.5);
+            const top = new THREE.Mesh(topGeo, deskMat);
+            top.position.y = 1;
+            deskGroup.add(top);
+            
+            const mBodyGeo = new THREE.BoxGeometry(0.8, 0.6, 0.5);
+            const mBody = new THREE.Mesh(mBodyGeo, monBody);
+            mBody.position.set(0, 1.35, -0.4);
+            deskGroup.add(mBody);
+
+            const mScreenGeo = new THREE.BoxGeometry(0.6, 0.4, 0.05);
+            const mScreen = new THREE.Mesh(mScreenGeo, monScreen);
+            mScreen.position.set(0, 1.35, -0.15);
+            deskGroup.add(mScreen);
+
+            const numStacks = Math.floor(Math.random() * 4) + 2;
+            for(let i=0; i<numStacks; i++) {
+                const px = (Math.random() - 0.5) * 1.5;
+                const pz = (Math.random() - 0.5) * 0.8;
+                const paperGeo = new THREE.BoxGeometry(0.3, 0.05, 0.4);
+                const paper = new THREE.Mesh(paperGeo, paperMat);
+                paper.position.set(px, 1.05, pz);
+                paper.rotation.y = Math.random() * 0.5;
+                deskGroup.add(paper);
+            }
+            deskGroup.position.set(x, 0, z);
+            scene.add(deskGroup);
+        }
+
+        function animateIntro() {
+            animationId = requestAnimationFrame(animateIntro);
+            if (!isTransitioning) {
+                camera.position.z -= moveSpeed;
+                camera.position.y = 1.6 + Math.sin(Date.now() * 0.005) * 0.05;
+                if (camera.position.z < -20) camera.position.z = 15;
+            } else {
+                camera.position.z -= 1.5; 
+                camera.fov -= 1; 
+                camera.updateProjectionMatrix();
+            }
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function startGame() {
+            AudioSys.init(); // Initialize audio context on user gesture
+            AudioSys.startHum(); // Start background noise
+
+            isTransitioning = true;
+            document.getElementById('intro-ui').style.opacity = '0';
+            document.getElementById('intro-ui').style.transition = 'opacity 0.5s';
+
+            setTimeout(() => {
+                cancelAnimationFrame(animationId);
+                introContainer.style.opacity = '0';
+                setTimeout(() => {
+                    introContainer.style.display = 'none';
+                    const gameWrapper = document.getElementById('game-wrapper');
+                    gameWrapper.classList.add('visible');
+                    while(scene.children.length > 0){ scene.remove(scene.children[0]); }
+                }, 1000);
+            }, 1500);
+        }
+
+        initThreeJS();
+
+
+        /* =========================================
+           GAME LOGIC (REDACTION GAME)
+           ========================================= */
+
+        const rawLevels = [
+            // --- MORNING (Rank 1: Apprentice) ---
+            {
+                type: 'official',
+                directive: "TRAINING: The project failed. Hide the failure.",
+                rawText: "[The] [project] {failed} {completely}.",
+                successMsg: "Good. The project simply exists."
+            },
+            {
+                type: 'official',
+                directive: "Food supplies are gone. Don't panic the public.",
+                rawText: "[Rations] [are] {empty} {today}.",
+                successMsg: "It reads 'Rations are'. Ambiguous, but not alarming."
+            },
+            {
+                type: 'official',
+                directive: "The war is lost. Deny it.",
+                rawText: "[We] [cannot] {win} {the} {war}.",
+                successMsg: "'We cannot...' leaves room for interpretation. Better than losing."
+            },
+            {
+                type: 'official',
+                directive: "The system crashed. Make it sound intentional.",
+                rawText: "[System] {crash} {initiated} [at] [midnight].",
+                successMsg: "System at midnight. Sounds like a scheduled event."
+            },
+
+            // --- PERSONAL CORRESPONDENCE #1 ---
+            {
+                type: 'personal',
+                directive: "OUTGOING MAIL: Letter to Spouse. Do not worry them.",
+                rawText: "Dearest, work is [hard]. {The} {screams} {keep} {me} {awake}. [I] [miss] [you].",
+                successMsg: "Letter sent. They will think you are just tired."
+            },
+
+            // --- EVENING (Rank 2: Clerk) ---
+            {
+                type: 'official',
+                directive: "The Director was arrested for fraud. He is on vacation.",
+                rawText: "[The] [Director] {was} {arrested} {for} {fraud}. [He] [is] {in} {jail}.",
+                successMsg: "The Director. He is. Simple facts."
+            },
+            {
+                type: 'official',
+                directive: "Riots in Sector 4. Call it a parade.",
+                rawText: "[Crowds] {are} {rioting} [in] [Sector] [4]. {They} {are} {violent}.",
+                successMsg: "Crowds in Sector 4. Excellent."
+            },
+            {
+                type: 'official',
+                directive: "Production has stopped due to strike. Hide the strike.",
+                rawText: "[Factory] [output] {is} {zero}. [Workers] {are} {refusing} {to} {work}.",
+                successMsg: "Factory output. Workers. No mention of the stoppage."
+            },
+            {
+                type: 'official',
+                directive: "The dam broke. It is just a leak.",
+                rawText: "[Water] {levels} {are} {critical}. [The] [dam] {has} {burst}.",
+                successMsg: "Water. The dam. No panic."
+            },
+
+            // --- PERSONAL CORRESPONDENCE #2 ---
+            {
+                type: 'personal',
+                directive: "OUTGOING MAIL: Letter to Children. Maintain the hero image.",
+                rawText: "The kids ask what I do. I told them [I] [am] [a] [hero]. {I} {hurt} {people} {daily}.",
+                successMsg: "They will sleep soundly believing their father is good."
+            },
+
+            // --- MIDNIGHT (Rank 3: Censor) ---
+            {
+                type: 'official',
+                directive: "The Minister is sick. He is strong.",
+                rawText: "[The] [Minister] {collapsed} {during} {the} {speech}. [He] {is} {in} {critical} {condition}.",
+                successMsg: "The Minister. He is."
+            },
+            {
+                type: 'official',
+                directive: "Our allies betrayed us. We are alone.",
+                rawText: "[The] [alliance] {is} {broken}. {They} {attacked} {our} {borders}. [We] [stand] {defenseless}.",
+                successMsg: "The alliance. We stand. Strong imagery."
+            },
+            {
+                type: 'official',
+                directive: "Accident at the lab. It was a test.",
+                rawText: "[Lab] [4] {experienced} {an} {explosion}. {Chemicals} {were} {leaked}. [Safety] {protocols} {failed}.",
+                successMsg: "Lab 4. Safety."
+            },
+            {
+                type: 'official',
+                directive: "Prices doubled. Inflation is normal.",
+                rawText: "[Bread] [costs] {have} {doubled}. [Citizens] {cannot} {afford} {food}. {Starvation} {is} {likely}.",
+                successMsg: "Bread costs. Citizens."
+            },
+
+            // --- PERSONAL CORRESPONDENCE #3 ---
+            {
+                type: 'personal',
+                directive: "OUTGOING MAIL: Self-Reflection. Do not admit guilt.",
+                rawText: "I look in the mirror. [I] [see] [a] [man]. {I} {see} {a} {monster}.",
+                successMsg: "Identity preserved. Conscience suppressed."
+            }
+        ];
+
+        /* --- Game State --- */
+        let currentLevelIdx = 0;
+        let wordElements = [];
+        let currentLevelData = null; 
+        let isDragging = false;
+        let dragAction = null; 
+
+        /* --- DOM Elements --- */
+        const documentArea = document.getElementById('document-area');
+        const textContainer = document.getElementById('text-content');
+        const missionText = document.getElementById('mission-text');
+        const levelIndicator = document.getElementById('rank-title');
+        const directiveId = document.getElementById('directive-id');
+        const stamp = document.getElementById('stamp');
+        const modal = document.getElementById('feedback-modal');
+        const feedbackMsg = document.getElementById('feedback-message');
+        const nextBtn = document.getElementById('next-btn');
+        const hintBox = document.getElementById('hint-box');
+        const hintText = document.getElementById('hint-text');
+        const progressFill = document.getElementById('progress-fill');
+        const classificationText = document.getElementById('classification-text');
+
+        document.addEventListener('mousedown', () => isDragging = true);
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            dragAction = null;
+        });
+
+        function parseLevel(rawLevelObj) {
+            const tokens = rawLevelObj.rawText.split(' ');
+            const cleanWords = [];
+            const badIndices = [];
+            const requiredIndices = [];
+
+            tokens.forEach((token, index) => {
+                let cleanWord = token;
+                if (token.startsWith('{') && token.endsWith('}')) {
+                    cleanWord = token.slice(1, -1);
+                    badIndices.push(index);
+                } else if (token.startsWith('[') && token.endsWith(']')) {
+                    cleanWord = token.slice(1, -1);
+                    requiredIndices.push(index);
+                }
+                cleanWords.push(cleanWord);
+            });
+
+            return {
+                text: cleanWords.join(' '),
+                badWords: badIndices,
+                requiredWords: requiredIndices,
+                directive: rawLevelObj.directive,
+                successMsg: rawLevelObj.successMsg,
+                type: rawLevelObj.type || 'official'
+            };
+        }
+
+        function initLevel(index) {
+            // Clear any transition classes from previous level
+            documentArea.classList.remove('slide-in', 'slide-out');
+
+            if (index >= rawLevels.length) {
+                missionText.innerText = "All directives processed.";
+                textContainer.innerHTML = "<center><h3>PROMOTION GRANTED</h3><p>You have served the Ministry well.</p></center>";
+                document.querySelector('.controls').style.display = 'none';
+                hintBox.style.display = 'none';
+                progressFill.style.width = '100%';
+                return;
+            }
+
+            // --- VISUAL PROGRESSION (Night Shift) ---
+            document.body.className = ''; // Reset
+            if (index <= 5) document.body.classList.add('phase-morning');
+            else if (index <= 10) document.body.classList.add('phase-evening');
+            else document.body.classList.add('phase-midnight');
+
+            currentLevelData = parseLevel(rawLevels[index]);
+            currentLevelIdx = index;
+            
+            // Rank Title
+            let rank = "APPRENTICE";
+            if(index > 5) rank = "CLERK";
+            if(index > 10) rank = "CENSOR";
+            if(index > 14) rank = "MINISTER";
+
+            levelIndicator.innerText = `${rank} (File ${index + 1}/${rawLevels.length})`;
+            directiveId.innerText = Math.floor(Math.random() * 900) + 100;
+            missionText.innerText = currentLevelData.directive;
+            
+            // --- PERSONAL CORRESPONDENCE LOGIC ---
+            if (currentLevelData.type === 'personal') {
+                documentArea.classList.add('personal');
+                classificationText.innerText = "PERSONAL";
+                classificationText.style.color = "#002b36";
+                classificationText.style.borderColor = "#002b36";
+            } else {
+                documentArea.classList.remove('personal');
+                classificationText.innerText = "CONFIDENTIAL";
+                classificationText.style.color = "inherit";
+                classificationText.style.borderColor = "inherit";
+            }
+
+            stamp.className = 'stamp'; 
+            documentArea.classList.remove('shake');
+            hintBox.classList.remove('show');
+            
+            const pct = (index / rawLevels.length) * 100;
+            progressFill.style.width = `${pct}%`;
+            
+            renderText(currentLevelData.text);
+        }
+
+        function renderText(text) {
+            textContainer.innerHTML = '';
+            const words = text.split(' ');
+            
+            words.forEach((word, index) => {
+                const span = document.createElement('span');
+                span.innerText = word + ' '; 
+                span.className = 'word';
+                span.dataset.index = index;
+                const randomRot = (Math.random() * 4 - 2).toFixed(1) + 'deg';
+                span.style.setProperty('--rot', randomRot);
+
+                span.addEventListener('mousedown', (e) => {
+                    const isRedacted = span.classList.contains('redacted');
+                    dragAction = isRedacted ? 'remove' : 'add';
+                    applyRedaction(span, dragAction);
+                });
+
+                span.addEventListener('mouseenter', (e) => {
+                    if (isDragging && dragAction) {
+                        applyRedaction(span, dragAction);
+                    }
+                });
+
+                textContainer.appendChild(span);
+            });
+            wordElements = Array.from(document.querySelectorAll('.word'));
+        }
+
+        function applyRedaction(element, action) {
+            if (action === 'add') {
+                if (!element.classList.contains('redacted')) {
+                    element.classList.add('redacted');
+                    AudioSys.playScratch(); // Play scratch sound
+                }
+            } else {
+                element.classList.remove('redacted');
+            }
+            if(hintBox.classList.contains('show')) hintBox.classList.remove('show');
+        }
+
+        function resetLevel() {
+            wordElements.forEach(el => el.classList.remove('redacted'));
+            stamp.className = 'stamp';
+            documentArea.classList.remove('shake');
+            hintBox.classList.remove('show');
+        }
+
+        function getHint() {
+            const redactedIndices = getRedactedIndices();
+            const { badWords, requiredWords } = currentLevelData;
+            let msg = "Review the directive carefully.";
+            const missedBad = badWords.find(idx => !redactedIndices.includes(idx));
+            const lostRequired = requiredWords.find(idx => redactedIndices.includes(idx));
+
+            if (lostRequired !== undefined) msg = "You have redacted a critical word needed for context.";
+            else if (missedBad !== undefined) msg = "Sensitive information is still visible.";
+            else if (redactedIndices.length > (wordElements.length * 0.8)) msg = "You are crossing out too much. It looks suspicious.";
+            else msg = "You are close. Look for negative words.";
+            
+            hintText.innerText = msg;
+            hintBox.classList.add('show');
+        }
+        
+        // --- CHEAT CODE / DEV MODE ---
+        function revealSecret() {
+            if (!currentLevelData) return;
+            
+            const { badWords } = currentLevelData;
+            
+            // Auto-solve the puzzle
+            wordElements.forEach((el, index) => {
+                const shouldBeRedacted = badWords.includes(index);
+                const isRedacted = el.classList.contains('redacted');
+                
+                if (shouldBeRedacted && !isRedacted) {
+                    el.classList.add('redacted');
+                } else if (!shouldBeRedacted && isRedacted) {
+                    el.classList.remove('redacted');
+                }
+            });
+            
+            // Subtle sound feedback
+             if (AudioSys && AudioSys.ctx) {
+                const t = AudioSys.ctx.currentTime;
+                const osc = AudioSys.ctx.createOscillator();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1200, t);
+                osc.frequency.exponentialRampToValueAtTime(800, t + 0.1);
+                const gain = AudioSys.ctx.createGain();
+                gain.gain.setValueAtTime(0.05, t);
+                gain.gain.linearRampToValueAtTime(0, t + 0.1);
+                osc.connect(gain);
+                gain.connect(AudioSys.ctx.destination);
+                osc.start();
+                osc.stop(t + 0.1);
+             }
+        }
+
+        function getRedactedIndices() {
+            return wordElements
+                .filter(el => el.classList.contains('redacted'))
+                .map(el => parseInt(el.dataset.index));
+        }
+
+        function submitRedaction() {
+            const redactedIndices = getRedactedIndices();
+            const { badWords, requiredWords, successMsg } = currentLevelData;
+
+            const missedBadWords = badWords.filter(idx => !redactedIndices.includes(idx));
+            const lostRequiredWords = requiredWords.filter(idx => redactedIndices.includes(idx));
+
+            let passed = true;
+            let msg = successMsg;
+
+            if (missedBadWords.length > 0) {
+                passed = false;
+                msg = `FAIL: ${missedBadWords.length} sensitive phrase(s) still visible.`;
+            } else if (lostRequiredWords.length > 0) {
+                passed = false;
+                msg = "FAIL: You redacted critical context we needed to keep.";
+            } else if (redactedIndices.length > wordElements.length * 0.9) {
+                passed = false;
+                msg = "FAIL: Too much redaction. It looks suspicious.";
+            }
+
+            documentArea.classList.remove('shake');
+            void documentArea.offsetWidth; 
+            documentArea.classList.add('shake');
+
+            // Play Stamp Sound
+            AudioSys.playStamp(passed);
+
+            if (passed) {
+                showStamp('approved');
+                setTimeout(() => showModal(true, msg), 1500);
+            } else {
+                showStamp('rejected');
+                setTimeout(() => showModal(false, msg), 1500);
+            }
+        }
+
+        function showStamp(type) {
+            stamp.className = `stamp ${type} visible`;
+        }
+
+        function showModal(success, msg) {
+            modal.classList.add('show');
+            const feedbackTitle = document.getElementById('feedback-title');
+            feedbackMsg.innerText = msg;
+            if (success) {
+                feedbackTitle.innerText = "DIRECTIVE FULFILLED";
+                feedbackTitle.style.color = "var(--accent-green)";
+                nextBtn.innerText = "NEXT FILE";
+                nextBtn.onclick = nextLevel;
+            } else {
+                feedbackTitle.innerText = "DIRECTIVE FAILED";
+                feedbackTitle.style.color = "var(--accent-red)";
+                nextBtn.innerText = "TRY AGAIN";
+                nextBtn.onclick = retryLevel;
+            }
+        }
+
+        function nextLevel() {
+            modal.classList.remove('show');
+            
+            // 1. Play Paper Sound
+            AudioSys.playPaper();
+
+            // 2. CRITICAL FIX: Remove 'slide-in' from previous level immediately
+            // This prevents CSS conflict where the element stays locked in "in" state
+            documentArea.classList.remove('slide-in');
+            
+            // Force a browser reflow to ensure the class removal is processed 
+            // before we add the new animation class
+            void documentArea.offsetWidth; 
+
+            // 3. Trigger Slide Out Animation
+            documentArea.classList.add('slide-out');
+
+            // 4. Wait for animation to finish, then load next level
+            setTimeout(() => {
+                initLevel(currentLevelIdx + 1);
+                
+                // 5. Trigger Slide In Animation
+                // initLevel has already cleaned up 'slide-out', so we just add 'slide-in'
+                documentArea.classList.add('slide-in');
+            }, 500);
+        }
+
+        function retryLevel() {
+            modal.classList.remove('show');
+            stamp.className = 'stamp';
+            documentArea.classList.remove('shake');
+        }
+
+        // Initialize Level 0 but don't play sound until StartGame
+        initLevel(0);
+
+    </script>
+</body>
+</html>
