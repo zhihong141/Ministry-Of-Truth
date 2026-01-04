@@ -571,6 +571,30 @@ body { min-height: 100dvh; }
     .game-container { width: 100%; margin: 0 auto; }
 }
 
+        
+/* --- LEVEL TRANSITION: Smooth Shuffle-Out/In (v1.3) --- */
+.doc-shuffle-out {
+    animation: docShuffleOut 360ms ease-in 1;
+    transform-origin: 50% 50%;
+    will-change: transform, opacity, filter;
+}
+.doc-shuffle-in {
+    animation: docShuffleIn 320ms ease-out 1;
+    transform-origin: 50% 50%;
+    will-change: transform, opacity, filter;
+}
+@keyframes docShuffleOut {
+    0%   { transform: translate3d(0,0,0) rotate(0deg) scale(1); opacity: 1; filter: blur(0px); }
+    35%  { transform: translate3d(-10px, 6px,0) rotate(-1.2deg) scale(1.01); opacity: 0.95; filter: blur(0.2px); }
+    70%  { transform: translate3d(14px, -10px,0) rotate(1.6deg) scale(0.995); opacity: 0.82; filter: blur(0.6px); }
+    100% { transform: translate3d(22px, -18px,0) rotate(2.6deg) scale(0.985); opacity: 0; filter: blur(1.0px); }
+}
+@keyframes docShuffleIn {
+    0%   { transform: translate3d(-18px, 12px,0) rotate(-2.0deg) scale(0.985); opacity: 0; filter: blur(1.0px); }
+    60%  { transform: translate3d(6px, -4px,0) rotate(0.8deg) scale(1.005); opacity: 0.92; filter: blur(0.2px); }
+    100% { transform: translate3d(0,0,0) rotate(0deg) scale(1); opacity: 1; filter: blur(0px); }
+}
+
         /* --- PHONE PORTRAIT RESPONSIVE PATCH (v1.0) --- */
 body {
     padding-top: env(safe-area-inset-top);
@@ -637,6 +661,25 @@ body {
     #start-btn { font-size: 1.15rem; padding: 12px 26px; }
 
     .vignette { box-shadow: inset 0 0 120px rgba(0,0,0,0.9); }
+}
+
+    
+    14%  { transform: translate3d(-10px, 6px,0) rotate(-1.2deg) scale(1.01); filter: blur(0.2px) contrast(1.05); }
+    28%  { transform: translate3d(12px, -8px,0) rotate(1.5deg) scale(0.995); filter: blur(0.4px) contrast(1.1); }
+    /* BUG OUT: sudden snap to a wrong "frame" */
+    38%  { transform: translate3d(26px, -18px,0) rotate(3.2deg) scale(1.02); filter: blur(1.2px) contrast(1.25); }
+    40%  { transform: translate3d(-22px, 14px,0) rotate(-2.9deg) scale(0.98); filter: blur(0.9px) contrast(1.35); }
+    /* SNAP BACK */
+    52%  { transform: translate3d(0,0,0) rotate(0deg) scale(1); filter: blur(0px) contrast(1); }
+    /* Shuffle again (smaller) */
+    70%  { transform: translate3d(-6px, 4px,0) rotate(-0.8deg) scale(1.005); filter: blur(0.2px) contrast(1.06); }
+    84%  { transform: translate3d(7px, -5px,0) rotate(0.9deg) scale(0.998); filter: blur(0.3px) contrast(1.08); }
+    100% { transform: translate3d(0,0,0) rotate(0deg) scale(1); filter: blur(0px) contrast(1); }
+}
+
+    
+@media (prefers-reduced-motion: reduce) {
+    .doc-shuffle-out, .doc-shuffle-in { animation: none !important; }
 }
 
     </style>
@@ -1147,6 +1190,58 @@ function onWindowResize() {
         let currentLevelData = null; 
         let isDragging = false;
         let dragAction = null; 
+
+        
+// --- Level transition micro-anim: document "shuffle" with bug-out snap ---
+function playDocumentShuffle() {
+    const doc = document.querySelector('.document-wrapper');
+    if (!doc) return;
+    // Restart animation reliably
+    doc.classList.remove('doc-shuffle');
+    // Force reflow
+    void doc.offsetWidth;
+    doc.classList.add('doc-shuffle');
+    // Clean up after
+    setTimeout(() => doc.classList.remove('doc-shuffle'), 700);
+}
+
+        
+// --- Level transition: smooth document shuffle-out, swap content, then shuffle-in ---
+function playDocumentShuffleTransition(swapFn) {
+    const doc = document.querySelector('.document-wrapper');
+    if (!doc) { if (typeof swapFn === 'function') swapFn(); return; }
+
+    // Respect reduced motion
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        if (typeof swapFn === 'function') swapFn();
+        return;
+    }
+
+    // Clean any previous classes
+    doc.classList.remove('doc-shuffle-in', 'doc-shuffle-out');
+
+    const doIn = () => {
+        doc.classList.remove('doc-shuffle-out');
+        // Restart in animation
+        void doc.offsetWidth;
+        doc.classList.add('doc-shuffle-in');
+        setTimeout(() => doc.classList.remove('doc-shuffle-in'), 380);
+    };
+
+    const onOutEnd = (e) => {
+        if (e && e.target !== doc) return;
+        doc.removeEventListener('animationend', onOutEnd);
+        if (typeof swapFn === 'function') swapFn();
+        // Force reflow after DOM updates
+        void doc.offsetWidth;
+        doIn();
+    };
+
+    doc.addEventListener('animationend', onOutEnd);
+    // Start out animation
+    void doc.offsetWidth;
+    doc.classList.add('doc-shuffle-out');
+}
 
         /* --- DOM Elements --- */
         const documentArea = document.getElementById('document-area');
