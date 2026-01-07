@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>The Ministry of Truth</title>
     <!-- Three.js for the 3D Intro -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -38,16 +38,18 @@
             user-select: none;
             -webkit-user-select: none;
             transition: background-color 2s ease, filter 2s ease;
+            /* Prevent pull-to-refresh on mobile */
+            overscroll-behavior-y: none;
         }
 
         /* --- VISUAL PROGRESSION PHASES --- */
         
-        /* Morning (Default) */
+        /* Morning (Levels 0-8) */
         body.phase-morning {
             --bg-color: #2c2c2c;
         }
 
-        /* Evening (Dimmed) */
+        /* Evening (Levels 9-18) */
         body.phase-evening {
             --bg-color: #1a1a1a;
         }
@@ -58,7 +60,7 @@
             box-shadow: inset 0 0 200px rgba(0,0,0,0.95);
         }
 
-        /* Midnight (Dark / High Stress) */
+        /* Midnight (Levels 19+) */
         body.phase-midnight {
             --bg-color: #050505;
         }
@@ -93,6 +95,7 @@
             font-family: 'Special Elite', cursive;
             text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
             pointer-events: none;
+            width: 90%;
         }
 
         .intro-title {
@@ -251,6 +254,7 @@
             transform: rotate(-1deg);
             margin-bottom: 10px;
             position: relative;
+            min-height: 60px; /* Ensure space for typing */
         }
 
         .paper-clip {
@@ -270,6 +274,14 @@
             border-bottom: 1px solid #888;
             padding-bottom: 5px;
             margin-bottom: 10px;
+        }
+
+        #mission-text {
+            line-height: 1.8;
+            letter-spacing: 1px;
+            /* CRITICAL FIX: Ensure whitespace is preserved and wrapped */
+            white-space: pre-wrap; 
+            font-weight: bold;
         }
 
         /* --- The Document --- */
@@ -352,13 +364,15 @@
         /* --- Redaction Mechanics --- */
         .word {
             cursor: crosshair;
-            padding: 2px 0;
-            margin: 0 2px;
+            padding: 4px 0;
+            margin: 0 5px; /* CRITICAL FIX: Increased spacing between words */
             border-radius: 2px;
             transition: background-color 0.1s;
             position: relative;
             z-index: 10;
             display: inline-block;
+            /* Improve touch targeting on mobile */
+            touch-action: none;
         }
 
         .word:hover {
@@ -496,6 +510,7 @@
             text-align: center;
             box-shadow: 0 0 20px rgba(0,0,0,0.8);
             border: 1px solid #999;
+            width: 80%;
         }
 
         .feedback-title { font-size: 1.5rem; font-weight: bold; margin-bottom: 10px; }
@@ -542,145 +557,20 @@
             text-transform: uppercase;
         }
 
-    
-
-/* --- PORTRAIT FIT FIX (v1.1) --- */
-:root { --vh: 1vh; } /* JS can override if needed */
-html, body { height: 100%; }
-
-/* Prefer dynamic viewport units on mobile to avoid "zoomed corner" + 100vh bugs */
-body { min-height: 100dvh; }
-
-#intro-container {
-    width: 100vw;
-    height: 100dvh;
-}
-
-/* Ensure the Three.js canvas truly fills the intro container */
-#intro-container canvas {
-    position: absolute;
-    inset: 0;
-    width: 100% !important;
-    height: 100% !important;
-    display: block;
-}
-
-@media (max-width: 520px) {
-    body { align-items: stretch; }
-    .game-wrapper { width: 100vw; min-height: 100dvh; padding: 12px; }
-    .game-container { width: 100%; margin: 0 auto; }
-}
-
-        
-/* --- LEVEL TRANSITION: Smooth Shuffle-Out/In (v1.3) --- */
-.doc-shuffle-out {
-    animation: docShuffleOut 360ms ease-in 1;
-    transform-origin: 50% 50%;
-    will-change: transform, opacity, filter;
-}
-.doc-shuffle-in {
-    animation: docShuffleIn 320ms ease-out 1;
-    transform-origin: 50% 50%;
-    will-change: transform, opacity, filter;
-}
-@keyframes docShuffleOut {
-    0%   { transform: translate3d(0,0,0) rotate(0deg) scale(1); opacity: 1; filter: blur(0px); }
-    35%  { transform: translate3d(-10px, 6px,0) rotate(-1.2deg) scale(1.01); opacity: 0.95; filter: blur(0.2px); }
-    70%  { transform: translate3d(14px, -10px,0) rotate(1.6deg) scale(0.995); opacity: 0.82; filter: blur(0.6px); }
-    100% { transform: translate3d(22px, -18px,0) rotate(2.6deg) scale(0.985); opacity: 0; filter: blur(1.0px); }
-}
-@keyframes docShuffleIn {
-    0%   { transform: translate3d(-18px, 12px,0) rotate(-2.0deg) scale(0.985); opacity: 0; filter: blur(1.0px); }
-    60%  { transform: translate3d(6px, -4px,0) rotate(0.8deg) scale(1.005); opacity: 0.92; filter: blur(0.2px); }
-    100% { transform: translate3d(0,0,0) rotate(0deg) scale(1); opacity: 1; filter: blur(0px); }
-}
-
-        /* --- PHONE PORTRAIT RESPONSIVE PATCH (v1.0) --- */
-body {
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-}
-
-/* Make touch dragging feel correct */
-#document-area { touch-action: none; }
-
-@media (max-width: 520px) {
-    .game-wrapper { padding: 12px; }
-    .game-container { max-width: 520px; gap: 12px; }
-
-    .header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-        padding: 12px;
-    }
-
-    .level-badge { font-size: 1.05rem; }
-
-    .mission-brief {
-        transform: none;
-        padding: 12px;
-    }
-
-    .document-wrapper {
-        padding: 18px;
-        font-size: 1.0rem;
-        line-height: 1.9;
-        min-height: 240px;
-    }
-
-    .document-wrapper.personal {
-        font-size: 1.2rem;
-    }
-    .document-wrapper.personal .word {
-        font-size: 1.25rem;
-    }
-
-    .word { padding: 6px 2px; margin: 0 1px; }
-
-    .controls {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
-    }
-    .action-buttons { width: 100%; gap: 10px; }
-    button { width: 100%; padding: 12px 14px; font-size: 0.95rem; }
-
-    .sticky-note {
-        width: min(240px, 78vw);
-        left: 10px;
-        top: -8px;
-    }
-
-    .feedback-card { width: min(520px, 90vw); padding: 20px; }
-
-    .intro-title { font-size: 2.0rem; letter-spacing: 3px; }
-    .intro-subtitle { font-size: 1.0rem; margin-bottom: 28px; }
-    #start-btn { font-size: 1.15rem; padding: 12px 26px; }
-
-    .vignette { box-shadow: inset 0 0 120px rgba(0,0,0,0.9); }
-}
-
-    
-    14%  { transform: translate3d(-10px, 6px,0) rotate(-1.2deg) scale(1.01); filter: blur(0.2px) contrast(1.05); }
-    28%  { transform: translate3d(12px, -8px,0) rotate(1.5deg) scale(0.995); filter: blur(0.4px) contrast(1.1); }
-    /* BUG OUT: sudden snap to a wrong "frame" */
-    38%  { transform: translate3d(26px, -18px,0) rotate(3.2deg) scale(1.02); filter: blur(1.2px) contrast(1.25); }
-    40%  { transform: translate3d(-22px, 14px,0) rotate(-2.9deg) scale(0.98); filter: blur(0.9px) contrast(1.35); }
-    /* SNAP BACK */
-    52%  { transform: translate3d(0,0,0) rotate(0deg) scale(1); filter: blur(0px) contrast(1); }
-    /* Shuffle again (smaller) */
-    70%  { transform: translate3d(-6px, 4px,0) rotate(-0.8deg) scale(1.005); filter: blur(0.2px) contrast(1.06); }
-    84%  { transform: translate3d(7px, -5px,0) rotate(0.9deg) scale(0.998); filter: blur(0.3px) contrast(1.08); }
-    100% { transform: translate3d(0,0,0) rotate(0deg) scale(1); filter: blur(0px) contrast(1); }
-}
-
-    
-@media (prefers-reduced-motion: reduce) {
-    .doc-shuffle-out, .doc-shuffle-in { animation: none !important; }
-}
+        /* --- MOBILE RESPONSIVE STYLES --- */
+        @media (max-width: 600px) {
+            .game-wrapper { padding: 10px; }
+            .document-wrapper { padding: 20px 15px; font-size: 1rem; }
+            .mission-brief { font-size: 0.9rem; }
+            .intro-title { font-size: 2rem; }
+            .controls { flex-direction: column; align-items: stretch; gap: 12px; }
+            .action-buttons { justify-content: space-between; width: 100%; gap: 10px; }
+            button { flex: 1; padding: 14px 10px; font-size: 0.9rem; }
+            .btn-hint { width: 100%; }
+            .level-badge { font-size: 1rem; }
+            .stamp { font-size: 2.5rem; border-width: 3px; padding: 5px 15px; }
+            .stamp.visible { transform: translate(-50%, -50%) scale(0.8) rotate(-15deg); }
+        }
 
     </style>
 </head>
@@ -918,6 +808,32 @@ body {
                 filter.connect(gain);
                 gain.connect(this.ctx.destination);
                 noise.start();
+            },
+
+            // 5. Typing Click (High freq short burst)
+            playType: function() {
+                if (!this.ctx) return;
+                const t = this.ctx.currentTime;
+                
+                const osc = this.ctx.createOscillator();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(2000 + Math.random()*500, t); // varied pitch
+                
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.02, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+                
+                // Filter to make it sound mechanical
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 3000;
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                
+                osc.start();
+                osc.stop(t + 0.05);
             }
         };
 
@@ -932,16 +848,6 @@ body {
         let isTransitioning = false;
         let animationId;
 
-        
-function setVhUnit() {
-    // Helps iOS Safari address bar resizing issues
-    const vh = window.innerHeight * 0.01;
-    document.documentElement.style.setProperty('--vh', `${vh}px`);
-}
-window.addEventListener('resize', setVhUnit, { passive: true });
-window.addEventListener('orientationchange', setVhUnit, { passive: true });
-setVhUnit();
-
         function initThreeJS() {
             scene = new THREE.Scene();
             scene.fog = new THREE.FogExp2(0x111111, 0.035);
@@ -951,14 +857,8 @@ setVhUnit();
             camera.position.set(0, 1.6, 15); 
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(introContainer.clientWidth, introContainer.clientHeight);
+            renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.domElement.style.position = 'absolute';
-            renderer.domElement.style.top = '0';
-            renderer.domElement.style.left = '0';
-            renderer.domElement.style.width = '100%';
-            renderer.domElement.style.height = '100%';
-            renderer.domElement.style.display = 'block';
             introContainer.appendChild(renderer.domElement);
 
             const ambientLight = new THREE.AmbientLight(0x404040, 0.5); 
@@ -1043,15 +943,11 @@ setVhUnit();
             renderer.render(scene, camera);
         }
 
-        
-function onWindowResize() {
-    if (!camera || !renderer) return;
-    const w = introContainer ? introContainer.clientWidth : window.innerWidth;
-    const h = introContainer ? introContainer.clientHeight : window.innerHeight;
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-    renderer.setSize(w, h);
-}
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
 
         function startGame() {
             AudioSys.init(); // Initialize audio context on user gesture
@@ -1068,6 +964,8 @@ function onWindowResize() {
                     introContainer.style.display = 'none';
                     const gameWrapper = document.getElementById('game-wrapper');
                     gameWrapper.classList.add('visible');
+                    // Typewriter for Level 0
+                    typewriterEffect(document.getElementById('mission-text'), rawLevels[0].directive);
                     while(scene.children.length > 0){ scene.remove(scene.children[0]); }
                 }, 1000);
             }, 1500);
@@ -1181,6 +1079,114 @@ function onWindowResize() {
                 directive: "OUTGOING MAIL: Self-Reflection. Do not admit guilt.",
                 rawText: "I look in the mirror. [I] [see] [a] [man]. {I} {see} {a} {monster}.",
                 successMsg: "Identity preserved. Conscience suppressed."
+            },
+
+            /* --- NEW EXPANDED LEVELS (Rank 4: Minister) --- */
+            {
+                type: 'official',
+                directive: "The cure is effective. Remove any suggestion of deception.",
+                rawText: "[The] [cure] {is} {fake}. {It} [is] [a] {placebo} {to} [calm] [the] [masses].",
+                successMsg: "The cure is a... calm. Vague, but sufficient."
+            },
+            {
+                type: 'official',
+                directive: "Sector 9 received aid. Conceal the nature of the supply and the request.",
+                rawText: "[Sector] [9] {demanded} {food}. [We] [gave] [them] {bullets}.",
+                successMsg: "We gave them... what? Better to leave it unsaid."
+            },
+            {
+                type: 'official',
+                directive: "The protest was peaceful. Remove the escalation.",
+                rawText: "[The] [protest] [was] [peaceful] {until} {we} {opened} {fire}.",
+                successMsg: "The protest was peaceful. History is written."
+            },
+            {
+                type: 'personal',
+                directive: "OUTGOING MAIL: Letter to Father. Do not worry him with paranoia.",
+                rawText: "{They} {suspect} {me}. [I] [found] [a] [bug] {in} {my} {lamp}. {I} {am} {scared}.",
+                successMsg: "I found a bug. Just a harmless insect. Nothing to worry about."
+            },
+            {
+                type: 'official',
+                directive: "Our soldiers possess the city. Remove mentions of retreat or loss.",
+                rawText: "[Our] [soldiers] {retreated}. {The} {enemy} {advanced}. {We} {lost} [the] [city].",
+                successMsg: "Our soldiers... the city. implies ownership."
+            },
+
+            /* --- RANK 5: OVERSEER (High Complexity) --- */
+            {
+                type: 'official',
+                directive: "Rationing is mandatory. Conceal the agricultural crisis.",
+                rawText: "{The} {harvest} {failed}. {There} {is} {no} {grain}. [Rationing] [is] [mandatory].",
+                successMsg: "Rationing is mandatory. A simple administrative fact."
+            },
+            {
+                type: 'official',
+                directive: "The Director's status is classified. Remove the cause and state of being.",
+                rawText: "[The] [Director] {is} {dead}. {He} {was} {poisoned}.",
+                successMsg: "The Director... a hanging sentence. Ominous."
+            },
+            {
+                type: 'official',
+                directive: "The camps were observed. Remove the observer and the order.",
+                rawText: "{A} {foreign} {journalist} [saw] [the] [camps]. {He} {must} {be} {silenced}.",
+                successMsg: "...saw the camps. Just observation."
+            },
+            {
+                type: 'personal',
+                directive: "OUTGOING MAIL: Self-Confession. You are innocent. You sleep fine.",
+                rawText: "{I} {burned} {the} {files}. {I} {remember} {their} {names}. [I] {cannot} [sleep].",
+                successMsg: "I sleep. A lie to yourself."
+            },
+            {
+                type: 'official',
+                directive: "It is a sunset. Remove the chemical origin.",
+                rawText: "{The} {sky} {turned} {red} {from} {the} {chemicals}. [It] [is] [a] [sunset].",
+                successMsg: "It is a sunset. Beautiful."
+            },
+
+            /* --- RANK 6: DIRECTOR (The Void - Doublethink) --- */
+            {
+                type: 'official',
+                directive: "Data collection was successful. Omit the biological cost.",
+                rawText: "{The} {experiment} {killed} {all} {subjects}. [Data] [collection] [was] [successful].",
+                successMsg: "Data collection was successful. Progress."
+            },
+            {
+                type: 'official',
+                directive: "We bombed the village. Remove any admission of error.",
+                rawText: "[We] [bombed] {the} {wrong} [village]. {It} {was} {a} {mistake}.",
+                successMsg: "We bombed village. A show of strength."
+            },
+            {
+                type: 'official',
+                directive: "Drink only wine. Do not mention the water quality.",
+                rawText: "{The} {water} {is} {toxic}. [Drink] [only] [wine].",
+                successMsg: "Drink only wine. A celebration."
+            },
+            {
+                type: 'personal',
+                directive: "OUTGOING MAIL: Love Letter. Do not reveal your departure.",
+                rawText: "[I] [love] [you]. {I} {am} {leaving}. {Do} {not} {look} {for} {me}.",
+                successMsg: "I love you. That is all that remains."
+            },
+            {
+                type: 'official',
+                directive: "DOUBLETHINK: Enforce Party Slogans. Remove negations.",
+                rawText: "[War] {is} {not} [peace]. [Freedom] {is} {not} [slavery]. [Ignorance] {is} {not} [strength].",
+                successMsg: "War is Peace. Freedom is Slavery. Ignorance is Strength."
+            },
+            {
+                type: 'official',
+                directive: "FINAL TEST: The Party is infallible. We correct reality, not history.",
+                rawText: "[The] [Party] [is] [never] [wrong]. [We] [correct] {history}.",
+                successMsg: "The Party is never wrong. We correct."
+            },
+            {
+                type: 'official',
+                directive: "THE VOID: Surrender. Remove hope and despair.",
+                rawText: "{There} {is} {no} {hope}. [Surrender] {to} {despair}.",
+                successMsg: "Surrender."
             }
         ];
 
@@ -1190,58 +1196,6 @@ function onWindowResize() {
         let currentLevelData = null; 
         let isDragging = false;
         let dragAction = null; 
-
-        
-// --- Level transition micro-anim: document "shuffle" with bug-out snap ---
-function playDocumentShuffle() {
-    const doc = document.querySelector('.document-wrapper');
-    if (!doc) return;
-    // Restart animation reliably
-    doc.classList.remove('doc-shuffle');
-    // Force reflow
-    void doc.offsetWidth;
-    doc.classList.add('doc-shuffle');
-    // Clean up after
-    setTimeout(() => doc.classList.remove('doc-shuffle'), 700);
-}
-
-        
-// --- Level transition: smooth document shuffle-out, swap content, then shuffle-in ---
-function playDocumentShuffleTransition(swapFn) {
-    const doc = document.querySelector('.document-wrapper');
-    if (!doc) { if (typeof swapFn === 'function') swapFn(); return; }
-
-    // Respect reduced motion
-    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        if (typeof swapFn === 'function') swapFn();
-        return;
-    }
-
-    // Clean any previous classes
-    doc.classList.remove('doc-shuffle-in', 'doc-shuffle-out');
-
-    const doIn = () => {
-        doc.classList.remove('doc-shuffle-out');
-        // Restart in animation
-        void doc.offsetWidth;
-        doc.classList.add('doc-shuffle-in');
-        setTimeout(() => doc.classList.remove('doc-shuffle-in'), 380);
-    };
-
-    const onOutEnd = (e) => {
-        if (e && e.target !== doc) return;
-        doc.removeEventListener('animationend', onOutEnd);
-        if (typeof swapFn === 'function') swapFn();
-        // Force reflow after DOM updates
-        void doc.offsetWidth;
-        doIn();
-    };
-
-    doc.addEventListener('animationend', onOutEnd);
-    // Start out animation
-    void doc.offsetWidth;
-    doc.classList.add('doc-shuffle-out');
-}
 
         /* --- DOM Elements --- */
         const documentArea = document.getElementById('document-area');
@@ -1258,36 +1212,42 @@ function playDocumentShuffleTransition(swapFn) {
         const progressFill = document.getElementById('progress-fill');
         const classificationText = document.getElementById('classification-text');
 
-        
-// --- INPUT: Pointer Events (mouse + touch) ---
-let isPointerDown = false;
-let activePointerId = null;
+        // Mouse Events
+        document.addEventListener('mousedown', () => isDragging = true);
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            dragAction = null;
+        });
 
-function endDrag() {
-    isDragging = false;
-    isPointerDown = false;
-    activePointerId = null;
-    dragAction = null;
-}
+        // Touch Events
+        document.addEventListener('touchstart', (e) => {
+            // Check if touch starts on a word
+            const touch = e.touches[0];
+            const target = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (target && target.classList.contains('word')) {
+                isDragging = true;
+                const isRedacted = target.classList.contains('redacted');
+                dragAction = isRedacted ? 'remove' : 'add';
+                applyRedaction(target, dragAction);
+            }
+        }, {passive: false});
 
-// Track pointer up/cancel anywhere on the page
-document.addEventListener('pointerup', (e) => {
-    if (activePointerId === null || e.pointerId === activePointerId) endDrag();
-}, { passive: true });
+        document.addEventListener('touchmove', (e) => {
+            if (isDragging) {
+                // Prevent scrolling while dragging to redact
+                e.preventDefault(); 
+                const touch = e.touches[0];
+                const target = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (target && target.classList.contains('word')) {
+                    applyRedaction(target, dragAction);
+                }
+            }
+        }, {passive: false});
 
-document.addEventListener('pointercancel', (e) => {
-    if (activePointerId === null || e.pointerId === activePointerId) endDrag();
-}, { passive: true });
-
-// Drag across words on touch: detect element under finger
-documentArea.addEventListener('pointermove', (e) => {
-    if (!isPointerDown || !isDragging || (activePointerId !== null && e.pointerId !== activePointerId)) return;
-    const el = document.elementFromPoint(e.clientX, e.clientY);
-    if (!el) return;
-    const wordEl = el.classList && el.classList.contains('word') ? el : (el.closest ? el.closest('.word') : null);
-    if (wordEl && dragAction) applyRedaction(wordEl, dragAction);
-    e.preventDefault();
-}, { passive: false });
+        document.addEventListener('touchend', () => {
+            isDragging = false;
+            dragAction = null;
+        });
 
         function parseLevel(rawLevelObj) {
             const tokens = rawLevelObj.rawText.split(' ');
@@ -1317,23 +1277,59 @@ documentArea.addEventListener('pointermove', (e) => {
             };
         }
 
+        /* --- Typewriter Effect --- */
+        let typingInterval;
+        function typewriterEffect(element, text) {
+            clearInterval(typingInterval);
+            element.innerText = '';
+            let i = 0;
+            typingInterval = setInterval(() => {
+                element.innerText += text.charAt(i);
+                if (text.charAt(i) !== ' ') AudioSys.playType();
+                i++;
+                if (i >= text.length) clearInterval(typingInterval);
+            }, 30);
+        }
+
         function initLevel(index) {
             // Clear any transition classes from previous level
             documentArea.classList.remove('slide-in', 'slide-out');
 
             if (index >= rawLevels.length) {
+                // --- END GAME REPORT ---
                 missionText.innerText = "All directives processed.";
-                textContainer.innerHTML = "<center><h3>PROMOTION GRANTED</h3><p>You have served the Ministry well.</p></center>";
                 document.querySelector('.controls').style.display = 'none';
                 hintBox.style.display = 'none';
                 progressFill.style.width = '100%';
+                
+                // Force reset to official style for report
+                documentArea.className = 'document-wrapper'; 
+                classificationText.innerText = "TOP SECRET";
+                
+                const reportHTML = `
+                    <div style="text-align:center; padding-top:20px;">
+                        <h2>EMPLOYEE EVALUATION</h2>
+                        <p>ID: 74-2025</p>
+                        <hr style="border: 1px solid #000; margin: 20px 0;">
+                        <div style="text-align:left; margin: 0 auto; width: 80%;">
+                            <p>LOYALTY: <span style="float:right">OUTSTANDING</span></p>
+                            <p>DISCRETION: <span style="float:right">ABSOLUTE</span></p>
+                            <p>EFFICIENCY: <span style="float:right">100%</span></p>
+                        </div>
+                        <br><br>
+                        <div style="border: 4px solid var(--accent-green); color: var(--accent-green); display:inline-block; padding: 10px 20px; font-family: 'Special Elite'; font-size: 2rem; transform: rotate(-10deg);">
+                            PROMOTED
+                        </div>
+                    </div>
+                `;
+                textContainer.innerHTML = reportHTML;
                 return;
             }
 
             // --- VISUAL PROGRESSION (Night Shift) ---
             document.body.className = ''; // Reset
-            if (index <= 5) document.body.classList.add('phase-morning');
-            else if (index <= 10) document.body.classList.add('phase-evening');
+            if (index <= 8) document.body.classList.add('phase-morning');
+            else if (index <= 18) document.body.classList.add('phase-evening');
             else document.body.classList.add('phase-midnight');
 
             currentLevelData = parseLevel(rawLevels[index]);
@@ -1343,11 +1339,19 @@ documentArea.addEventListener('pointermove', (e) => {
             let rank = "APPRENTICE";
             if(index > 5) rank = "CLERK";
             if(index > 10) rank = "CENSOR";
-            if(index > 14) rank = "MINISTER";
+            if(index > 15) rank = "MINISTER";
+            if(index > 20) rank = "OVERSEER";
+            if(index > 25) rank = "DIRECTOR";
 
             levelIndicator.innerText = `${rank} (File ${index + 1}/${rawLevels.length})`;
             directiveId.innerText = Math.floor(Math.random() * 900) + 100;
-            missionText.innerText = currentLevelData.directive;
+            
+            // Only use typewriter for Level > 0 here (Level 0 handled in startGame)
+            if (index > 0) {
+                typewriterEffect(missionText, currentLevelData.directive);
+            } else {
+                missionText.innerText = ""; // Will be typed by startGame
+            }
             
             // --- PERSONAL CORRESPONDENCE LOGIC ---
             if (currentLevelData.type === 'personal') {
@@ -1378,33 +1382,24 @@ documentArea.addEventListener('pointermove', (e) => {
             
             words.forEach((word, index) => {
                 const span = document.createElement('span');
-                span.innerText = word + ' '; 
+                span.innerText = word; 
                 span.className = 'word';
                 span.dataset.index = index;
                 const randomRot = (Math.random() * 4 - 2).toFixed(1) + 'deg';
                 span.style.setProperty('--rot', randomRot);
 
-                
-span.addEventListener('pointerdown', (e) => {
-    // Lock to one pointer (finger) at a time
-    activePointerId = e.pointerId;
-    isPointerDown = true;
-    isDragging = true;
+                // Mouse Events (existing)
+                span.addEventListener('mousedown', (e) => {
+                    const isRedacted = span.classList.contains('redacted');
+                    dragAction = isRedacted ? 'remove' : 'add';
+                    applyRedaction(span, dragAction);
+                });
 
-    const isRedacted = span.classList.contains('redacted');
-    dragAction = isRedacted ? 'remove' : 'add';
-    applyRedaction(span, dragAction);
-
-    // Prevent page scroll while dragging on mobile
-    e.preventDefault();
-}, { passive: false });
-
-// Desktop hover drag support
-span.addEventListener('pointerenter', (e) => {
-    if (e.pointerType === 'mouse' && isDragging && dragAction) {
-        applyRedaction(span, dragAction);
-    }
-});
+                span.addEventListener('mouseenter', (e) => {
+                    if (isDragging && dragAction) {
+                        applyRedaction(span, dragAction);
+                    }
+                });
 
                 textContainer.appendChild(span);
             });
